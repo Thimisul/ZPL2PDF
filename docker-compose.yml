@@ -7,8 +7,6 @@
 #   Testing:     docker-compose --profile test up
 # =============================================================================
 
-version: '3.8'
-
 services:
   # ---------------------------------------------------------------------------
   # Production Service - Daemon Mode
@@ -26,7 +24,7 @@ services:
     
     environment:
       # Localization settings
-      - ZPL2PDF_LANGUAGE=en-US  # Change to: pt-BR, es-ES, fr-FR, de-DE, it-IT, ja-JP, zh-CN
+      - ZPL2PDF_LANGUAGE=pt-BR  # Change to: pt-BR, es-ES, fr-FR, de-DE, it-IT, ja-JP, zh-CN
       
       # System settings
       - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
@@ -34,15 +32,14 @@ services:
       - LC_ALL=en_US.UTF-8
       - LANG=en_US.UTF-8
     
-    # Run daemon mode with custom folder
-    command: run -l /app/watch
+    command: ["/app/ZPL2PDF", "run", "-l", "/app/watch"]
     
     # Auto-restart on failure
     restart: unless-stopped
     
     # Health monitoring
     healthcheck:
-      test: ["/app/ZPL2PDF", "status"]
+      test: ["CMD", "/app/ZPL2PDF", "status"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -62,6 +59,33 @@ services:
           memory: 256M
 
   # ---------------------------------------------------------------------------
+  # API Service - HTTP REST Mode
+  # ---------------------------------------------------------------------------
+  zpl2pdf-api:
+    build: .
+    image: zpl2pdf:2.0.0
+    container_name: zpl2pdf-api
+    ports:
+      - "5000:5000"
+    environment:
+      - ZPL2PDF_LANGUAGE=en-US
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - LC_ALL=en_US.UTF-8
+      - LANG=en_US.UTF-8
+    command: ["/app/ZPL2PDF", "--api", "--port", "5000", "--host", "0.0.0.0"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    user: zpl2pdf
+    profiles:
+      - api
+
+  # ---------------------------------------------------------------------------
   # Portuguese Service Example
   # ---------------------------------------------------------------------------
   zpl2pdf-pt:
@@ -77,9 +101,9 @@ services:
       - ZPL2PDF_LANGUAGE=pt-BR  # Portuguese
       - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
     
-    command: run -l /app/watch
+    command: ["/app/ZPL2PDF", "run", "-l", "/app/watch"]
     restart: unless-stopped
-    
+
     profiles:
       - multilang
 
@@ -99,9 +123,9 @@ services:
       - ZPL2PDF_LANGUAGE=es-ES  # Spanish
       - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
     
-    command: run -l /app/watch
+    command: ["/app/ZPL2PDF", "run", "-l", "/app/watch"]
     restart: unless-stopped
-    
+
     profiles:
       - multilang
 
@@ -120,9 +144,7 @@ services:
     environment:
       - ZPL2PDF_LANGUAGE=en-US
     
-    # Example: convert single file
-    # Override this command when running
-    command: -i /app/input/label.txt -o /app/output -n output.pdf -w 10 -h 5 -u cm
+    command: ["/app/ZPL2PDF", "-i", "/app/input/label.txt", "-o", "/app/output", "-n", "output.pdf", "-w", "10", "-h", "5", "-u", "cm"]
     
     profiles:
       - convert
