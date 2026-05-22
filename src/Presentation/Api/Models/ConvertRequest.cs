@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace ZPL2PDF.Presentation.Api.Models
@@ -48,5 +49,16 @@ namespace ZPL2PDF.Presentation.Api.Models
         /// Rendering engine: "offline" (default), "labelary", or "auto"
         /// </summary>
         public string Renderer { get; set; } = "offline";
+
+        /// <summary>
+        /// Directory containing TTF/OTF font files (offline renderer only)
+        /// </summary>
+        public string? FontsDir { get; set; }
+
+        /// <summary>
+        /// Font ID to file mapping, e.g. { "A": "arial.ttf", "0": "zebra.ttf" }
+        /// Paths are relative to FontsDir if provided, otherwise absolute
+        /// </summary>
+        public Dictionary<string, string>? Fonts { get; set; }
     }
 }

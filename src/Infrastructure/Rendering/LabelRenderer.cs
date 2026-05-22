@@ -41,7 +41,7 @@ namespace ZPL2PDF {
                 OpaqueBackground = false
             };
             if (_fontsDirectory != null || (_fontMappings != null && _fontMappings.Count > 0)) {
-                options.FontLoader = CreateFontLoader();
+                options.FontManager.FontLoader = CreateFontLoader();
             }
             return options;
         }

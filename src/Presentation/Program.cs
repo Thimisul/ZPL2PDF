@@ -232,12 +232,16 @@ namespace ZPL2PDF
                         return;
                     }
 
+                    // Font configuration (offline renderer only)
+                    var fontsDir = request.FontsDir;
+                    var fontMappings = BuildFontMappings(request.Fonts);
+
                     // Convert ZPL(s)
                     var conversionService = new ConversionService();
 
                     // When format=pdf, try direct PDF via Labelary according to renderer policy.
                     // In auto mode, failures fall back to PNG pipeline.
-                    if (format == "pdf" && TryConvertDirectPdfResponse(request, conversionService, width, height, unit, dpi, rendererEngine, out var directPdfBytes, out var pages))
+                    if (format == "pdf" && TryConvertDirectPdfResponse(request, conversionService, width, height, unit, dpi, rendererEngine, fontsDir, fontMappings, out var directPdfBytes, out var pages))
                     {
                         var directResponse = new ConvertResponse
                         {
@@ -254,7 +258,7 @@ namespace ZPL2PDF
                     }
 
                     // PNG pipeline (also used as fallback for PDF).
-                    var imageDataList = ConvertToImages(request, conversionService, width, height, unit, dpi, rendererEngine);
+                    var imageDataList = ConvertToImages(request, conversionService, width, height, unit, dpi, rendererEngine, fontsDir, fontMappings);
 
                     if (imageDataList == null || imageDataList.Count == 0)
                     {
@@ -339,6 +343,16 @@ namespace ZPL2PDF
             return renderer == "offline" || renderer == "labelary" || renderer == "auto";
         }
 
+        private static IReadOnlyList<(string Id, string Path)>? BuildFontMappings(Dictionary<string, string>? fonts)
+        {
+            if (fonts == null || fonts.Count == 0)
+                return null;
+
+            return fonts
+                .Select(kv => (kv.Key, kv.Value))
+                .ToList();
+        }
+
         private static bool TryConvertDirectPdfResponse(
             ConvertRequest request,
             ConversionService conversionService,
@@ -347,6 +361,8 @@ namespace ZPL2PDF
             string unit,
             int dpi,
             RendererEngine rendererEngine,
+            string? fontsDir,
+            IReadOnlyList<(string Id, string Path)>? fontMappings,
             out byte[]? directPdfBytes,
             out int pages)
         {
@@ -365,7 +381,9 @@ namespace ZPL2PDF
                     unit,
                     dpi,
                     rendererEngine,
-                    out directPdfBytes);
+                    out directPdfBytes,
+                    fontsDir,
+                    fontMappings);
             }
             else if (request.ZplArray != null && request.ZplArray.Count > 0)
             {
@@ -385,7 +403,9 @@ namespace ZPL2PDF
                         unit,
                         dpi,
                         rendererEngine,
-                        out var partPdfBytes))
+                        out var partPdfBytes,
+                        fontsDir,
+                        fontMappings))
                     {
                         pdfParts.Clear();
                         break;
@@ -412,13 +432,15 @@ namespace ZPL2PDF
             double height,
             string unit,
             int dpi,
-            RendererEngine rendererEngine)
+            RendererEngine rendererEngine,
+            string? fontsDir,
+            IReadOnlyList<(string Id, string Path)>? fontMappings)
         {
             var imageDataList = new List<byte[]>();
 
             if (!string.IsNullOrWhiteSpace(request.Zpl))
             {
-                return conversionService.Convert(request.Zpl, width, height, unit, dpi, rendererEngine: rendererEngine);
+                return conversionService.Convert(request.Zpl, width, height, unit, dpi, fontsDir, fontMappings, rendererEngine);
             }
 
             if (request.ZplArray == null || request.ZplArray.Count == 0)
@@ -431,7 +453,7 @@ namespace ZPL2PDF
                 if (string.IsNullOrWhiteSpace(zpl))
                     continue;
 
-                var images = conversionService.Convert(zpl, width, height, unit, dpi, rendererEngine: rendererEngine);
+                var images = conversionService.Convert(zpl, width, height, unit, dpi, fontsDir, fontMappings, rendererEngine);
                 imageDataList.AddRange(images);
             }
 
