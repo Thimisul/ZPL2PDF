@@ -1,0 +1,74 @@
+# =============================================================================
+# ZPL2PDF - Dockerfile para Coolify (modo API HTTP)
+# =============================================================================
+# Roda o serviço em modo API na porta 5000
+# POST /api/convert  →  converte ZPL em PDF ou PNG
+# GET  /api/health   →  health check
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Stage 1: Build
+# -----------------------------------------------------------------------------
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+
+WORKDIR /src
+
+COPY ZPL2PDF.csproj .
+COPY Resources/ ./Resources/
+RUN dotnet restore ZPL2PDF.csproj
+
+COPY src/ ./src/
+
+RUN dotnet publish ZPL2PDF.csproj \
+    --configuration Release \
+    --runtime linux-musl-x64 \
+    --self-contained true \
+    --output /app/publish \
+    -p:PublishSingleFile=false \
+    -p:PublishReadyToRun=true \
+    -p:PublishTrimmed=false
+
+# -----------------------------------------------------------------------------
+# Stage 2: Runtime (Alpine Linux)
+# -----------------------------------------------------------------------------
+FROM alpine:3.23 AS runtime
+
+RUN apk add --no-cache \
+    libgdiplus \
+    libintl \
+    icu-libs \
+    icu-data-full \
+    libstdc++ \
+    libgcc \
+    ca-certificates \
+    tzdata \
+    fontconfig \
+    ttf-dejavu \
+    ttf-liberation \
+    font-noto \
+    && fc-cache -f
+
+RUN addgroup -S zpl2pdf && adduser -S zpl2pdf -G zpl2pdf
+
+WORKDIR /app
+
+COPY --from=build /app/publish/ .
+
+RUN chmod +x /app/ZPL2PDF && \
+    chown -R zpl2pdf:zpl2pdf /app
+
+USER zpl2pdf
+
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
+    DOTNET_RUNNING_IN_CONTAINER=true \
+    LC_ALL=en_US.UTF-8 \
+    LANG=en_US.UTF-8 \
+    ZPL2PDF_LANGUAGE=en-US \
+    ZPL2PDF_PORT=5000
+
+EXPOSE 5000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD wget -qO- http://localhost:5000/api/health || exit 1
+
+CMD ["/bin/sh", "-c", "/app/ZPL2PDF --api --port ${ZPL2PDF_PORT}"]

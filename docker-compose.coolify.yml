@@ -1,0 +1,45 @@
+# =============================================================================
+# ZPL2PDF - Docker Compose para Coolify
+# =============================================================================
+# Modo: API HTTP (POST /api/convert, GET /api/health)
+#
+# No Coolify:
+#   - Aponte para este arquivo como "Docker Compose file"
+#   - Configure as variáveis de ambiente pelo painel
+#   - O Coolify cuidará do proxy reverso (Traefik/Caddy) automaticamente
+# =============================================================================
+
+services:
+  zpl2pdf:
+    build:
+      context: .
+      dockerfile: Dockerfile.coolify
+    image: zpl2pdf-api:latest
+    container_name: zpl2pdf-api
+
+    ports:
+      - "${ZPL2PDF_PORT:-5000}:5000"
+
+    environment:
+      # Idioma da API (afeta mensagens de erro)
+      ZPL2PDF_LANGUAGE: ${ZPL2PDF_LANGUAGE:-en-US}
+
+      # Porta interna do servidor HTTP
+      ZPL2PDF_PORT: "5000"
+
+      # Configurações .NET
+      DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "false"
+      DOTNET_RUNNING_IN_CONTAINER: "true"
+      LC_ALL: en_US.UTF-8
+      LANG: en_US.UTF-8
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    restart: unless-stopped
+
+    # Sem volumes — API é stateless (recebe ZPL, devolve PDF/PNG em base64)
