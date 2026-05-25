@@ -5,8 +5,9 @@
 #
 # No Coolify:
 #   - Aponte para este arquivo como "Docker Compose file"
-#   - Configure as variáveis de ambiente pelo painel
-#   - O Coolify cuidará do proxy reverso (Traefik/Caddy) automaticamente
+#   - Em "Domains", configure o domínio desejado apontando para a porta 5000
+#   - O Traefik (proxy do Coolify) cuidará do roteamento sem expor a porta
+#   - Para HTTPS automático, habilite "SSL" no painel do Coolify
 # =============================================================================
 
 services:
@@ -17,8 +18,13 @@ services:
     image: zpl2pdf-api:latest
     container_name: zpl2pdf-api
 
-    ports:
-      - "${ZPL2PDF_PORT:-5000}:5000"
+    # Sem mapeamento de porta — o Traefik do Coolify roteia pelo domínio configurado.
+    # Para acesso direto temporário (debug), descomente a linha abaixo:
+    # ports:
+    #   - "5000:5000"
+
+    expose:
+      - "5000"
 
     environment:
       # Idioma da API (afeta mensagens de erro)
