@@ -53,4 +53,11 @@ services:
 
     restart: unless-stopped
 
+    networks:
+      - coolify
+
     # Sem volumes — API é stateless (recebe ZPL, devolve PDF/PNG em base64)
+
+networks:
+  coolify:
+    external: true
