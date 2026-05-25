@@ -26,6 +26,11 @@ services:
     expose:
       - "5000"
 
+    labels:
+      # Traefik — informa ao proxy qual porta interna usar
+      - "traefik.enable=true"
+      - "traefik.http.services.zpl2pdf.loadbalancer.server.port=5000"
+
     environment:
       # Idioma da API (afeta mensagens de erro)
       ZPL2PDF_LANGUAGE: ${ZPL2PDF_LANGUAGE:-en-US}
