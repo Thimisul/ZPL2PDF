@@ -6,7 +6,6 @@
 # No Coolify:
 #   - Docker Compose Location: /docker-compose.coolify.yml
 #   - Domains: http://seu-dominio.com:5000
-#     (o :5000 indica a porta interna do container — acesso externo fica sem porta)
 # =============================================================================
 
 services:
@@ -15,6 +14,14 @@ services:
       context: .
       dockerfile: Dockerfile.coolify
     image: zpl2pdf-api:latest
+
+    expose:
+      - "5000"
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.zpl2pdf.loadbalancer.server.port=5000"
+      - "traefik.docker.network=coolify"
 
     environment:
       ZPL2PDF_LANGUAGE: ${ZPL2PDF_LANGUAGE:-en-US}
@@ -32,3 +39,10 @@ services:
       start_period: 15s
 
     restart: unless-stopped
+
+    networks:
+      - coolify
+
+networks:
+  coolify:
+    external: true
